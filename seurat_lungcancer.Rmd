@@ -1,0 +1,101 @@
+---
+title: "Seurat - Lung Cancer scRNA-Seq Clustering using Mutual Information"
+author: "Peter Boennighausen"
+output:
+  html_document:
+    theme: united
+date: 'Compiled: `r format(Sys.Date(), "%B %d, %Y")`'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    cache = TRUE,
+    cache.lazy = FALSE,
+    tidy = TRUE
+)
+library(Seurat)
+
+library(readxl)
+library(dplyr)
+library(tibble)
+
+library(aricode) #NMI
+library(wesanderson) #colors
+source("mi_scrna.R")
+load("./adenoallraw.RData")
+type <- "tumor"
+lung <- CreateSeuratObject(adeno.all$TUMOR, min.cells = 3, min.features = 0, project = "nsclc")
+
+metadata <- read_excel("./MetaData.xlsx", sheet = 1)
+strsplit.ind2 <- seq(from=2, by=2, length.out = nrow(metadata))
+metadata <- metadata %>%
+    mutate(piece = unlist(strsplit(Patient_piece, split="-"))[strsplit.ind2]) %>%
+    filter(CellType == type)
+
+lung <- AddMetaData(object = lung, metadata = metadata)
+```
+
+
+```{r normalize and regress, results='hide'}
+lung <- NormalizeData(object = lung, normalization.method = "LogNormalize", scale.factor = 1e4)
+all.genes <- rownames(x = lung)
+lung <- ScaleData(object = lung, features = all.genes)
+lung <- FindVariableFeatures(lung)
+```
+
+```{r make MI distance matrix by gene}
+genes <- head(VariableFeatures(lung), 70) # top 70 most variable genes
+counts <- GetAssayData(object=lung,slot="counts")[genes, ] %>% as.matrix # rows = genes, columns = cells
+
+comb.cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4) &
+                       metadata$cell %in% colnames(counts),]$cell
+
+print("Creating distance matrices...")
+mi.graph <- build_dist_matrix(cells = comb.cells, counts = counts, metric = function(x,y) 1 - NMI(x,y)) %>%
+    as_tbl_graph(directed = FALSE)
+cor.graph <- build_dist_matrix(cells = comb.cells, counts = counts, metric = function(x,y) 1 - abs(cor(x,y))) %>%
+                as_tbl_graph(directed = FALSE)
+```
+
+```{r analyze graphs}
+print(most_central(mi.graph, 10, counts))
+print(most_hclust(mi.graph, 10, counts))
+print(most_central(cor.graph, 10, counts))
+print(most_hclust(cor.graph, 10, counts))
+```
+
+```{r create plots}
+create_clusters("Pts 3 and 4 combined exp minmax + 1", mi.graph = mi.graph, cor.graph = cor.graph) 
+```
+
+## OLD ##
+We can also cluster cells by genes using mutual information.
+
+```{r cluster normally}
+lung <- RunPCA(object = lung, features = VariableFeatures(object = lung))
+lung <- FindNeighbors(object = lung, dims=1:10)
+lung <- FindClusters(object = lung, resolution = 0.5)
+lung[["normalClusterID"]] <- Idents(lung)
+lung <- RunTSNE(object = lung, dims.use = 1:10, do.fast = TRUE)
+Idents(lung) <- metadata.filt$PatientNumber.MS
+normalClusters <- DimPlot(object = lung, reduction = "tsne")
+normalClusters <- normalClusters + ggtitle("Clustering based on Euclidean distance")
+ggsave("plots/Correlation Cell Clusters.png")
+```
+
+```{r cluster based on MI}
+mi_dist <- cmi(t(Embeddings(lung)[,1:10]))$bcmi #bias corrected mutual info off first 10 PCs
+mi_dist <- max(mi_dist) - mi_dist #invert values in matrix since high mi = small distance
+lung[["tsne_mi"]] <- RunTSNE(mi_dist, assay = "RNA", dims.use=1:10, reduction.key = "miTSNE_")
+rownames(mi_dist) <- colnames(lung)
+colnames(mi_dist) <- colnames(lung)
+
+lung[["mi_snn"]] <- FindNeighbors(mi_dist)$snn
+lung <- FindClusters(lung, resolution = 0.2, graph.name = "mi_snn")
+rownames(lung@reductions$tsne_mi@cell.embeddings) <- colnames(lung) #must label embeddings to allow DimPlot
+Idents(lung) <- metadata.filt$PatientNumber.MS
+miClusters <- DimPlot(object = lung, reduction = "tsne_mi")
+miClusters <- miClusters + ggtitle("Clustering based on mutual information")
+ggsave("plots/MI Clusters.png")
+```
+

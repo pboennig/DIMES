@@ -1,0 +1,4 @@
+*.xlsx
+*.RData
+plots/
+presentations/
