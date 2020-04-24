@@ -4,29 +4,16 @@ library(ggraph)
 library(ggdendro)
 library(purrr)
 library(Matrix)
+library(aricode) #NMI
+
+layout_alg <- "drl"
 
 mmnorm <- function(x, mx, mn) {
-    exp((x - mn) / (mx - mn))
+    (x - mn) / (mx - mn)
 }
 
-#' Core function to build a given distance matrix between genes (the rownames of *counts*) using *metric*. 
-#' Necessary for all other functions. Can optionally run PCA to reduce dimensionality before calculating
-#' similarity metrics. Assumes *counts* is rows of genes with columns of cells. 
-#' TODO: user is able to define the metric, want a default metric (NMI) and maybe both flag
-#' Look into PCA limits/warning message
-build_dist_matrix <- function(cells, counts, num_PCs=20, metric, run_PCA = FALSE, gene_mat = TRUE) {
+.calc_dist_matrix <- function(genes, d, metric) {
     FUN <- match.fun(metric)
-    genes <- rownames(counts)
-    
-    # builds similarity matrix via metric
-    if (run_PCA) {
-        pca <- counts[,cells] %>% prcomp 
-        pca$x <- round(pca$x, 0) 
-        d <- pca$x[,1:num_PCs]
-    } else {
-        d <- counts[, cells]
-    }
-    # reduce dimensionality and discretize
     d_mat <- matrix(nrow=length(genes), ncol=length(genes), dimnames = list(genes, genes))
     for (i in c(1:length(genes))) {
         x <- genes[i]
@@ -41,19 +28,50 @@ build_dist_matrix <- function(cells, counts, num_PCs=20, metric, run_PCA = FALSE
     d_mat[] 
 }
 
+
+#' Core function to build a given distance matrix between genes (the rownames of *counts*) using *metric*. 
+#' Necessary for all other functions. Can optionally run PCA to reduce dimensionality before calculating
+#' similarity metrics. Assumes *counts* is rows of genes with columns of cells. 
+#' TODO: user is able to define the metric, want a default metric (NMI) and maybe both flag
+#' Look into PCA limits/warning message
+build_dist_matrix <- function(cells, counts, num_PCs=20, run_PCA = FALSE, gene_mat = TRUE, nmi = TRUE, cor = TRUE) {
+    genes <- rownames(counts)
+    
+    # if run_pca, reduce dimensionality and discretize
+    if (run_PCA) {
+        pca <- counts[,cells] %>% prcomp 
+        pca$x <- round(pca$x, 0) 
+        d <- pca$x[,1:num_PCs]
+    } else {
+        d <- counts[, cells]
+    }
+
+    # builds similarity matrix via metrics flagged
+    if (nmi) {
+        mi.mat <- .calc_dist_matrix(genes = genes, d = d, metric = function(x,y) 1 - NMI(x, y))
+    } else {
+        mi.mat <- NULL
+    }
+    if (cor) {
+        cor.mat <- .calc_dist_matrix(genes = genes, d = d, metric = function(x,y) 1 - cor(x, y))
+    } else {
+        corr.mat <- NULL
+    }
+    return(list(mi = mi.mat, cor = cor.mat))
+}
+
 # 2. Functions for saving and visualizing networks ---------------------------------------------------
 
 #' Save picture of network built from *x* colored by authority (Kleinberg Centrality) at *filename*.png
 #' TODO: option on build_dist_matrix
 save_network <- function(x, filename) {
     mutate(x, centrality = centrality_authority()) %>%
-        ggraph(layout = "kk") +
+        ggraph(layout = layout_alg) +
             scale_color_gradientn(colors = wes_palette("Zissou1", 21, type = "continuous")) +
             geom_edge_link(aes(alpha = weight)) +
             scale_edge_alpha(range = c(.1, .5)) +
-            geom_node_point(aes(color = centrality), size = 12) + 
-            geom_node_text(aes(label = name), fontface = "bold") +
-            theme_graph(base_family = "Arial") +
+            geom_node_point(aes(color = centrality), size = 5) + 
+            geom_node_text(aes(label = name), repel = TRUE, color = "firebrick3") +
             labs(edge_alpha = "distance") +
             ggtitle(paste(filename, "expression network"))
 
@@ -64,10 +82,9 @@ save_network <- function(x, filename) {
 #' TODO: also option on build_dist_matrix
 save_gene_clusters <- function(x, filename) {
     mutate(x, group = as.factor(group_louvain())) %>% 
-        ggraph(layout = "kk") +
-            geom_node_point(aes(color = group), size = 12) + 
-            geom_node_text(aes(label = name), fontface = "bold") +
-            theme_graph() +
+        ggraph(layout = layout_alg) +
+            geom_node_point(aes(color = group), size = 5) + 
+            geom_node_text(aes(label = name), repel = TRUE) +
             ggtitle(paste(filename, "clusters"))
 
     ggsave(paste("plots/",filename, " clusters.png",sep=""), width = 11, height = 8.5)

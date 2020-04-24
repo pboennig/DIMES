@@ -19,7 +19,6 @@ library(readxl)
 library(dplyr)
 library(tibble)
 
-library(aricode) #NMI
 library(wesanderson) #colors
 source("mi_scrna.R")
 load("./adenoallraw.RData")
@@ -51,10 +50,9 @@ comb.cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4) &
                        metadata$cell %in% colnames(counts),]$cell
 
 print("Creating distance matrices...")
-mi.graph <- build_dist_matrix(cells = comb.cells, counts = counts, metric = function(x,y) 1 - NMI(x,y)) %>%
-    as_tbl_graph(directed = FALSE)
-cor.graph <- build_dist_matrix(cells = comb.cells, counts = counts, metric = function(x,y) 1 - abs(cor(x,y))) %>%
-                as_tbl_graph(directed = FALSE)
+res <- build_dist_matrix(cells = comb.cells, counts = counts)
+mi.graph <- res$mi %>% as_tbl_graph(directed = FALSE)
+cor.graph <- res$cor %>% as_tbl_graph(directed = FALSE)
 ```
 
 ```{r analyze graphs}
@@ -65,7 +63,7 @@ print(most_hclust(cor.graph, 10, counts))
 ```
 
 ```{r create plots}
-create_clusters("Pts 3 and 4 combined exp minmax + 1", mi.graph = mi.graph, cor.graph = cor.graph) 
+create_clusters("minmax/Combined minmax", mi.graph = mi.graph, cor.graph = cor.graph) 
 ```
 
 ## OLD ##
