@@ -36,11 +36,14 @@ comb.cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4) &
 rm(list=setdiff(ls(), c("comb.cells", "counts")))
 source("mi_scrna.R")
 print("Creating distance matrices...")
-res <- build_dist_matrix(cells = comb.cells, counts = counts)
-dismay <- dist_matrix(cells = comb.cells, counts = counts, metric = "spearman")
-mi.graph <- res$cor %>% as_tbl_graph(directed = FALSE)
-mi.two <- as_tbl_graph(dismay, directed=FALSE)
+metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'zi_kendall', 'binomial', 'MI', 
+  'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
+  'weighted_rank', 'hamming')
 
-save_gene_clusters(mi.graph, "minmax/original method cor")
-save_gene_clusters(mi.two, "minmax/dismay method cor")
+for (metric in metrics) {
+    graph <- dist_matrix(cells=comb.cells,counts=counts,metric=metric) %>%
+                as_tbl_graph(directed=FALSE)
+    save_gene_clusters(graph, metric)
+    save_network(graph, metric)
+}
 
