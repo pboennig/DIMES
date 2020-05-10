@@ -1,10 +1,11 @@
 library(tidygraph)
 library(ggplot2)
 library(ggraph)
-library(ggdendro)
 library(purrr)
 library(Matrix)
 library(aricode) #NMI
+library(dismay)
+library(pryr)
 
 layout_alg <- "drl"
 
@@ -22,11 +23,11 @@ mmnorm <- function(x, mx, mn) {
             d_mat[x, y] <- 1 - FUN(d[x,], d[y,])
             d_mat[y, x] <- d_mat[x, y] # distance metric should be symmetric
         }
-        d_mat[x, x] <- 0
     }
-    d_mat[] <- vapply(d_mat, partial(mmnorm, mx = max(d_mat), mn = min(d_mat)), numeric(1))
-    d_mat[] 
+    diag(d_mat) <- 0
+    apply(d_mat, c(1,2), mmnorm, mx=max(d_mat), min(d_mat))
 }
+
 
 
 #' Core function to build a given distance matrix between genes (the rownames of *counts*) using *metric*. 
@@ -36,7 +37,6 @@ mmnorm <- function(x, mx, mn) {
 #' Look into PCA limits/warning message
 build_dist_matrix <- function(cells, counts, num_PCs=20, run_PCA = FALSE, gene_mat = TRUE, nmi = TRUE, cor = TRUE) {
     genes <- rownames(counts)
-    
     # if run_pca, reduce dimensionality and discretize
     if (run_PCA) {
         pca <- counts[,cells] %>% prcomp 
@@ -45,7 +45,6 @@ build_dist_matrix <- function(cells, counts, num_PCs=20, run_PCA = FALSE, gene_m
     } else {
         d <- counts[, cells]
     }
-
     # builds similarity matrix via metrics flagged
     if (nmi) {
         mi.mat <- .calc_dist_matrix(genes = genes, d = d, metric = function(x,y) 1 - NMI(x, y))
@@ -53,12 +52,24 @@ build_dist_matrix <- function(cells, counts, num_PCs=20, run_PCA = FALSE, gene_m
         mi.mat <- NULL
     }
     if (cor) {
-        cor.mat <- .calc_dist_matrix(genes = genes, d = d, metric = function(x,y) 1 - cor(x, y))
+        cor.mat <- .calc_dist_matrix(genes = genes, d = d, metric = function(x,y) 1 - cor(x, y, method="spearman"))
     } else {
         corr.mat <- NULL
     }
     return(list(mi = mi.mat, cor = cor.mat))
 }
+
+dist_matrix <-function(cells, counts, metric) {
+    mat <- t(as.matrix(counts[, cells]))
+    sim_mat <- dismay(mat, metric) 
+    sim_mat <- sim_mat- min(sim_mat) + .01 #with eps term
+    d_mat <- 1 / (sim_mat) # convert to distance matrix
+    diag(d_mat) <- 0
+    print(min(d_mat))
+    d_mat
+    #d_mat <- mmnorm(d_mat, mx= max(d_mat), mn=min(d_mat))
+}
+
 
 # 2. Functions for saving and visualizing networks ---------------------------------------------------
 

@@ -51,8 +51,8 @@ comb.cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4) &
 
 print("Creating distance matrices...")
 res <- build_dist_matrix(cells = comb.cells, counts = counts)
+mi.two <- dist_matrix(cells = comb.cells, counts = counts, metric = "MI") %>% as_tbl_graph(directed = FALSE)
 mi.graph <- res$mi %>% as_tbl_graph(directed = FALSE)
-cor.graph <- res$cor %>% as_tbl_graph(directed = FALSE)
 ```
 
 ```{r analyze graphs}
@@ -63,7 +63,8 @@ print(most_hclust(cor.graph, 10, counts))
 ```
 
 ```{r create plots}
-create_clusters("minmax/Combined minmax", mi.graph = mi.graph, cor.graph = cor.graph) 
+save_gene_clusters(mi.graph, "minmax/original method mi")
+save_gene_clusters(mi.two, "minmax/dismay method mi")
 ```
 
 ## OLD ##

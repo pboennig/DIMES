@@ -1,0 +1,106 @@
+
+R version 4.0.0 (2020-04-24) -- "Arbor Day"
+Copyright (C) 2020 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> knitr::opts_chunk$set(
++     cache = TRUE,
++     cache.lazy = FALSE,
++     tidy = TRUE
++ )
+> library(Seurat)
+> library(readxl)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+> library(tibble)
+> 
+> library(wesanderson) #colors
+> source("mi_scrna.R")
+
+Attaching package: ‘tidygraph’
+
+The following object is masked from ‘package:stats’:
+
+    filter
+
+
+Attaching package: ‘dismay’
+
+The following object is masked from ‘package:stats’:
+
+    binomial
+
+> load("./adenoallraw.RData")
+> type <- "tumor"
+> lung <- CreateSeuratObject(adeno.all$TUMOR, min.cells = 3, min.features = 0, project = "nsclc")
+Warning: Feature names cannot have underscores ('_'), replacing with dashes ('-')
+> 
+> metadata <- read_excel("./MetaData.xlsx", sheet = 1)
+New names:
+* `` -> ...1
+> strsplit.ind2 <- seq(from=2, by=2, length.out = nrow(metadata))
+> metadata <- metadata %>%
++     mutate(piece = unlist(strsplit(Patient_piece, split="-"))[strsplit.ind2]) %>%
++     filter(CellType == type)
+> 
+> lung <- AddMetaData(object = lung, metadata = metadata)
+Warning: Invalid name supplied, making object name syntactically valid. New object name is ...1clustercellCellTypeSamplingCellFromTumorID.form.Table.S2Patient_piecePatientNumber.MSAnnotationpiece; see ?make.names for more details on syntax validity
+> 
+> 
+> lung <- NormalizeData(object = lung, normalization.method = "LogNormalize", scale.factor = 1e4)
+Performing log-normalization
+0%   10   20   30   40   50   60   70   80   90   100%
+[----|----|----|----|----|----|----|----|----|----|
+**************************************************|
+> all.genes <- rownames(x = lung)
+> lung <- ScaleData(object = lung, features = all.genes)
+Centering and scaling data matrix
+  |                                                                              |                                                                      |   0%  |                                                                              |====                                                                  |   5%  |                                                                              |=======                                                               |  11%  |                                                                              |===========                                                           |  16%  |                                                                              |===============                                                       |  21%  |                                                                              |==================                                                    |  26%  |                                                                              |======================                                                |  32%  |                                                                              |==========================                                            |  37%  |                                                                              |=============================                                         |  42%  |                                                                              |=================================                                     |  47%  |                                                                              |=====================================                                 |  53%  |                                                                              |=========================================                             |  58%  |                                                                              |============================================                          |  63%  |                                                                              |================================================                      |  68%  |                                                                              |====================================================                  |  74%  |                                                                              |=======================================================               |  79%  |                                                                              |===========================================================           |  84%  |                                                                              |===============================================================       |  89%  |                                                                              |==================================================================    |  95%  |                                                                              |======================================================================| 100%
+> lung <- FindVariableFeatures(lung)
+Calculating gene variances
+0%   10   20   30   40   50   60   70   80   90   100%
+[----|----|----|----|----|----|----|----|----|----|
+**************************************************|
+Calculating feature variances of standardized and clipped values
+0%   10   20   30   40   50   60   70   80   90   100%
+[----|----|----|----|----|----|----|----|----|----|
+**************************************************|
+> 
+> genes <- head(VariableFeatures(lung), 70) # top 70 most variable genes
+> counts <- GetAssayData(object=lung,slot="counts")[genes, ] %>% as.matrix # rows = genes, columns = cells
+> 
+> comb.cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4) &
++                        metadata$cell %in% colnames(counts),]$cell
+> 
+> print("Creating distance matrices...")
+[1] "Creating distance matrices..."
+> rm(lung, adeno.all)
+> res <- build_dist_matrix(cells = comb.cells, counts = counts)
+> mi.two <- dist_matrix(cells = comb.cells, counts = counts, metric = "pearson") %>% as_tbl_graph(directed = FALSE)
+
+Error: vector memory exhausted (limit reached?)
+Execution halted
