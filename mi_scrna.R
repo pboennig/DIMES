@@ -3,18 +3,29 @@ library(ggplot2)
 library(ggraph)
 library(purrr)
 library(Matrix)
-library(aricode) #NMI
 library(dismay)
 library(pryr)
+library(wesanderson) #colors
 
-#' Constants
-layout_alg <- "drl"
-eps <- .01
+#' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
+#' where graphs$m is a tbl_graph composed using distance metric m from metrics
+build_gene_graphs <- function(obj, cells, metrics, num_genes=70) {
+    obj <- FindVariableFeatures(obj)
+    genes <- head(VariableFeatures(obj), num_genes) # top 70 most variable genes
+    counts <- GetAssayData(object=obj,slot="counts")[genes, ] %>% as.matrix # rows = genes, columns = cells
+    cells <- cells[cells %in% colnames(counts)] # only take cells that are actually in our counts
+    mat <- t(as.matrix(counts[, cells])) # dismay expects as transpose of Seurat default
+    graphs <- vector(mode="list",length=length(metrics))
+    names(graphs) <- metrics
+    for (metric in metrics) {
+        graphs$metric <- dist_matrix(mat, metric) %>% as_tbl_graph(directed=FALSE)
+    }
+    graphs
+}
 
 #' Core function to build a given distance matrix between genes (the rownames of *counts*) using *metric*. 
-#' Necessary for all other functions. Use given metric to generate distance matrix.
-dist_matrix <-function(cells, counts, metric) {
-    mat <- t(as.matrix(counts[, cells])) # dismay expects as transpose of Seurat default
+#' Wrapper around dismay with inversion to convert to distance matrix.
+dist_matrix <-function(mat, metric, eps=.01) {
     sim_mat <- dismay(mat, metric) 
     sim_mat <- sim_mat - min(sim_mat) + eps # make all positive with eps for numerical stability
     d_mat <- 1 / (sim_mat) # convert to distance matrix
@@ -22,11 +33,9 @@ dist_matrix <-function(cells, counts, metric) {
     d_mat
 }
 
-
 # 2. Functions for saving and visualizing networks ---------------------------------------------------
-
 #' Save picture of network built from *x* colored by authority (Kleinberg Centrality) at *filename*.png
-save_network <- function(x, filename) {
+save_network <- function(x, filename, layout_alg="drl") {
     mutate(x, centrality = centrality_authority()) %>%
         ggraph(layout = layout_alg) +
             scale_color_gradientn(colors = wes_palette("Zissou1", 21, type = "continuous")) +
@@ -52,7 +61,6 @@ save_gene_clusters <- function(x, filename) {
 }
 
 # 3. Functions for listing and ranking genes ----------------------------------
-
 #' Get top *num* most central genes from network *x* as defined by Kleinberg
 #' centrality
 most_central <- function(x, num, counts) {
