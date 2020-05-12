@@ -1,5 +1,5 @@
 ---
-title: "Seurat - Lung Cancer scRNA-Seq Clustering using Mutual Information"
+title: "Introduction to DIMESS using cancer scRNA data"
 author: "Peter Boennighausen"
 output:
   html_document:
@@ -7,20 +7,35 @@ output:
 date: 'Compiled: `r format(Sys.Date(), "%B %d, %Y")`'
 ---
 
-```{r setup, include=FALSE}
+```{r knitr-setup, include=FALSE}
 knitr::opts_chunk$set(
     cache = TRUE,
     cache.lazy = FALSE,
-    tidy = TRUE
+    tidy = TRUE, 
+    warning = FALSE,
+    message = FALSE
 )
+```
+DIMESS is a package for analyzing scRNA data. It allows you to try out different
+distance metrics easily on Seurat objects in order to cluster genes and explore gene
+expression networks. 
+
+We start by loading some packages. The most important is Seurat -- DIMESS expects to interact with Seurat objects
+throughout the entire workflow.
+```{r load packages}
 library(Seurat)
 library(readxl)
 library(dplyr)
 source("dimess.R")
 ```
 
+Now that we have the necessary packages, we load data. Some of this is example specific, such as the code to attach
+metadata to the Seurat object. When working with your own datasets, be sure to ensure that your Seurat object has count data 
+with the proper feature (gene) names.
 
-```{r load data and metadata}
+The normalization procedure is basically identical to that described in the Seurat vignettes -- the point of 
+DIMESS is to augment rather than replace your existing Seurat workflow.
+```{r load data and metadata, results='hide'}
 load("./adenoallraw.RData")
 type <- "tumor"
 lung <- CreateSeuratObject(adeno.all$TUMOR, min.cells = 3, min.features = 0, project = "nsclc")
@@ -35,17 +50,44 @@ lung <- NormalizeData(object = lung, normalization.method = "LogNormalize", scal
 all.genes <- rownames(x = lung)
 lung <- ScaleData(object = lung, features = all.genes)
 ```
-
-```{r subset cells and build gene graphs}
+Now that we have a Seurat object, let's examine gene expression networks. First, we
+identify a subset of cell _names_ that interest us. In our case, we're looking
+at only patients 3 and 4, so we get the cell names of interest by subsetting
+the metadata. 
+```{r subset cells and build gene graphs, results='hide'}
 cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4),]$cell
-metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'zi_kendall', 'binomial', 'MI', 
+```
+Next, we identify some list of metrics that interest up. DIMESS supports the 17 
+from the `dismay` package, here we use almost all of them.
+```{r list metrics}
+metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'zi_kendall', 'binomial', 'MI',
   'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
   'weighted_rank', 'hamming')
-
+```
+We then pass our `cells` and `metrics` to DIMESS's `build_gene_graphs` function, 
+which returns a list of `tbl_graph` items that
+can be passed to the other functions in the package. 
+```{r build graphs}
 graphs <- build_gene_graphs(lung, cells, metrics)
+```
 
-for (metric in metrics) {
-    save_gene_clusters(graphs$metric, metric)
-    save_network(graphs$metric, metric)
+For example, we can plot some of the clusters for different metrics.
+```{r plot all clusters}
+for (metric in c("pearson", "MI", "bicor")) {
+    plot_gene_clusters(graphs[[metric]], metric)
+}
+```
+
+We could also plot the overall network, colored by centrality:
+```{r plot-network}
+for (metric in c("cosine", "jaccard", "manhattan")) {
+    plot_network(graphs[[metric]], metric)
+}
+```
+
+We can also find just the most central genes:
+```{r top-10}
+for (metric in c("euclidean", "binomial", "weighted_rank")) {
+  print(most_central(graphs[[metric]], 10))
 }
 ```
