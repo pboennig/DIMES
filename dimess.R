@@ -6,6 +6,8 @@ library(Matrix)
 library(dismay)
 library(pryr)
 library(wesanderson) #colors
+library(tibble)
+library(dplyr)
 
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics

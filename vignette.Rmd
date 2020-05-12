@@ -1,3 +1,13 @@
+---
+title: "Seurat - Lung Cancer scRNA-Seq Clustering using Mutual Information"
+author: "Peter Boennighausen"
+output:
+  html_document:
+    theme: united
+date: 'Compiled: `r format(Sys.Date(), "%B %d, %Y")`'
+---
+
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
     cache = TRUE,
     cache.lazy = FALSE,
@@ -6,9 +16,11 @@ knitr::opts_chunk$set(
 library(Seurat)
 library(readxl)
 library(dplyr)
-library(tibble)
+source("dimess.R")
+```
 
-source("mi_scrna.R")
+
+```{r load data and metadata}
 load("./adenoallraw.RData")
 type <- "tumor"
 lung <- CreateSeuratObject(adeno.all$TUMOR, min.cells = 3, min.features = 0, project = "nsclc")
@@ -18,12 +30,13 @@ strsplit.ind2 <- seq(from=2, by=2, length.out = nrow(metadata))
 metadata <- metadata %>%
     mutate(piece = unlist(strsplit(Patient_piece, split="-"))[strsplit.ind2]) %>%
     filter(CellType == type)
-
 lung <- AddMetaData(object = lung, metadata = metadata)
-
 lung <- NormalizeData(object = lung, normalization.method = "LogNormalize", scale.factor = 1e4)
 all.genes <- rownames(x = lung)
 lung <- ScaleData(object = lung, features = all.genes)
+```
+
+```{r subset cells and build gene graphs}
 cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4),]$cell
 metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'zi_kendall', 'binomial', 'MI', 
   'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
@@ -35,3 +48,4 @@ for (metric in metrics) {
     save_gene_clusters(graphs$metric, metric)
     save_network(graphs$metric, metric)
 }
+```
