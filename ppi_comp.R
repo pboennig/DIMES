@@ -3,7 +3,7 @@ library(STRINGdb)
 library(igraph)
 source("dimess.R")
 
-source("loadAdeno.R") #load adeno data
+source("load_adeno.R") #load adeno data
 
 metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
   'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
