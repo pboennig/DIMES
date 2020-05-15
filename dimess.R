@@ -17,17 +17,14 @@ build_gene_graphs <- function(obj, cells, metrics, num_genes=70) {
     counts <- GetAssayData(object=obj,slot="counts")[genes, ] %>% as.matrix # rows = genes, columns = cells
     cells <- cells[cells %in% colnames(counts)] # only take cells that are actually in our counts
     mat <- t(as.matrix(counts[, cells])) # dismay expects as transpose of Seurat default
-    graphs <- vector(mode="list",length=length(metrics))
+    graphs <- lapply(metrics, dist_matrix, mat)
     names(graphs) <- metrics
-    for (metric in metrics) {
-        graphs[[metric]] <- dist_matrix(mat, metric) %>% as_tbl_graph(directed=FALSE)
-    }
     graphs
 }
 
 #' Core function to build a given distance matrix between genes (the rownames of *counts*) using *metric*. 
 #' Wrapper around dismay with inversion to convert to distance matrix.
-dist_matrix <-function(mat, metric, eps=.001) {
+dist_matrix <-function(metric, mat, eps=.001) {
     sim_mat <- dismay(mat, metric) 
     sim_mat <- sim_mat - min(sim_mat) + eps # make all positive with eps for numerical stability
     d_mat <- 1 / (sim_mat) # convert to distance matrix
