@@ -1,31 +1,40 @@
 library(dplyr)
 library(STRINGdb)
 library(igraph)
+library(plotROC)
 source("dimess.R")
 
 source("load_adeno.R") #load adeno data
 
-metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
+metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', # 'MI',
   'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
-  'weighted_rank', 'hamming')
+  'weighted_rank', 'hamming', 'rho_p', 'phi_s')
 graphs <- build_gene_graphs(lung, cells, metrics)
+string_db <- STRINGdb$new(version="11", score_threshold=200, input_directory=".", species=9606)
 
-string_db <- STRINGdb$new(version="11")
-mapped <- graphs[[1]] %>% 
-            activate(nodes) %>% 
-            as.data.frame %>%
-            string_db$map("name", removeUnmappedRows = TRUE)
+verts <- graphs[[1]] %>% activate(nodes) %>% as.data.frame # get vertices names
+mapped <- string_db$map(verts, "name", removeUnmappedRows = TRUE) # map to string_ids
+to_remove <- verts$name[which(!(verts$name %in% mapped$name))] # remove unmapped vertices
+mapped <- mapped[mapped$name %in% intersect(verts$name, mapped$name),] 
+mapped <- mapped[!duplicated(mapped$name),] # some datasets have duplicates
+string_subset <- string_db$get_subnetwork(mapped$STRING_id) %>% get.adjacency
+string_subset <- string_subset / 2 # adjacency matrix has 2 if edge exists, want it to be 0/1
 
-string_subset <- string_db$get_subnetwork(mapped$STRING_id) %>% as_adjacency_matrix
-calc_acc <- function(m, graphs, mapped, string_subset) {
-  num_connections <- sum(string_subset / 2) # how many PPI connections
-  adj_mat <- as.igraph(graphs[[m]]) %>%
-          simplify %>% # remove self-edges
-          delete.vertices(setdiff(V(.)$name, mapped$name)) %>%
-          set.vertex.attribute("name", value = mapped[which(mapped$name == V(.)$name),]$STRING_id) %>%
-          delete.edges(E(.)[E(.)$weight > sort(E(.)$weight)[num_connections]]) %>%
-          as_adjacency_matrix
-  1 - norm(adj_mat - string_subset / 2) / num_connections
+calc_score <- function(g, mapped, string_subset, to_remove) {
+  g <- as.igraph(g) %>%
+    delete.vertices(to_remove)
+  g <- set.vertex.attribute(g, "name", value=mapped[which(mapped$name==V(g)$name),]$STRING_id)
+  score <- get.adjacency(g, attr="weight") # higher score -> closer distance
+  correspondence <- match(rownames(string_subset), rownames(score))
+  score <- score[correspondence,]
+  score[,correspondence] %>% as.vector 
 }
-accs <- lapply(metrics, calc_acc, graphs, mapped, string_subset)
-names(accs) <- metrics
+scores <- lapply(graphs, calc_score, mapped, string_subset, to_remove)
+
+
+names(scores) <- metrics
+s <- data.frame(scores)
+s$status <- as.vector(string_subset) # score matrix w/ labels in status column
+longtest <- melt_roc(s, d = "status", m = metrics) # merge into long data (all metrics together in one column)
+p <- ggplot(longtest, aes(d = D, m = M, color = name)) + geom_roc(labels=FALSE, increasing=FALSE) + style_roc() # plot ROCs
+aucs <- data.frame(metric=metrics, auc=calc_auc(p)$AUC)[order(-aucs$auc),] #calculate AUCs and sort by AUC value

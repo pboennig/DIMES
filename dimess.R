@@ -11,8 +11,7 @@ library(dplyr)
 
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics
-build_gene_graphs <- function(obj, cells, metrics, num_genes=70) {
-    obj <- FindVariableFeatures(obj)
+build_gene_graphs <- function(obj, cells, metrics, num_genes=800) {
     genes <- head(VariableFeatures(obj), num_genes) # top 70 most variable genes
     counts <- GetAssayData(object=obj,slot="counts")[genes, ] %>% as.matrix # rows = genes, columns = cells
     cells <- cells[cells %in% colnames(counts)] # only take cells that are actually in our counts
@@ -22,14 +21,13 @@ build_gene_graphs <- function(obj, cells, metrics, num_genes=70) {
     graphs
 }
 
-#' Core function to build a given distance matrix between genes (the rownames of *counts*) using *metric*. 
 #' Wrapper around dismay with inversion to convert to distance matrix.
 dist_matrix <-function(metric, mat, eps=.001) {
     sim_mat <- dismay(mat, metric) 
     sim_mat <- sim_mat - min(sim_mat) + eps # make all positive with eps for numerical stability
     d_mat <- 1 / (sim_mat) # convert to distance matrix
     diag(d_mat) <- 0 # distance from gene to itself = 0
-    d_mat
+    as_tbl_graph(d_mat)
 }
 
 # 2. Functions for saving and visualizing networks ---------------------------------------------------
