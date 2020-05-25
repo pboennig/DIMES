@@ -8,22 +8,29 @@ library(pryr)
 library(wesanderson) #colors
 library(tibble)
 library(dplyr)
+library(WGCNA)
 
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics
 build_gene_graphs <- function(obj, cells, metrics, num_genes=800) {
     genes <- head(VariableFeatures(obj), num_genes) # top 70 most variable genes
     counts <- GetAssayData(object=obj,slot="counts")[genes, ] %>% as.matrix # rows = genes, columns = cells
+    log_counts <- GetAssayData(object=obj,slot="scale.data")[genes, ] %>% as.matrix # rows = genes, columns = cells
     cells <- cells[cells %in% colnames(counts)] # only take cells that are actually in our counts
-    mat <- t(as.matrix(counts[, cells])) # dismay expects as transpose of Seurat default
-    graphs <- lapply(metrics, dist_matrix, mat)
+    count_mat <- t(as.matrix(counts[, cells])) # dismay expects as transpose of Seurat default
+    log_mat <- t(as.matrix(log_counts[, cells])) # dismay expects as transpose of Seurat default
+    graphs <- lapply(metrics, dist_matrix, count_mat, log_mat)
     names(graphs) <- metrics
     graphs
 }
 
 #' Wrapper around dismay with inversion to convert to distance matrix.
-dist_matrix <-function(metric, mat, eps=.001) {
-    sim_mat <- dismay(mat, metric) 
+dist_matrix <-function(metric, count_mat, log_mat, eps=.001) {
+    if (metric %in% c('phi_s', 'rho_p')) {
+        sim_mat <- dismay(count_mat, metric) 
+    } else {
+        sim_mat <- dismay(log_mat, metric) 
+    }
     sim_mat <- sim_mat - min(sim_mat) + eps # make all positive with eps for numerical stability
     d_mat <- 1 / (sim_mat) # convert to distance matrix
     diag(d_mat) <- 0 # distance from gene to itself = 0

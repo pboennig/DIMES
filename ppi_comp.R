@@ -2,14 +2,18 @@ library(dplyr)
 library(STRINGdb)
 library(igraph)
 library(plotROC)
-source("dimess.R")
+source("dimes.R")
 
 source("load_adeno.R") #load adeno data
 
-metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', # 'MI',
+metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
   'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
   'weighted_rank', 'hamming', 'rho_p', 'phi_s')
 graphs <- build_gene_graphs(lung, cells, metrics)
+# mutinfo functions remove '-' characters
+graphs$MI <- graphs$MI %>% activate(nodes) %>% mutate(name = pears_names)
+
+
 string_db <- STRINGdb$new(version="11", score_threshold=200, input_directory=".", species=9606)
 
 verts <- graphs[[1]] %>% activate(nodes) %>% as.data.frame # get vertices names
@@ -31,10 +35,15 @@ calc_score <- function(g, mapped, string_subset, to_remove) {
 }
 scores <- lapply(graphs, calc_score, mapped, string_subset, to_remove)
 
-
+for (i in 1:length(mut)) {
+  if (mut[i] != pears[i]) {
+    print(paste(mut[i], pears[i]))
+  }
+}
 names(scores) <- metrics
 s <- data.frame(scores)
 s$status <- as.vector(string_subset) # score matrix w/ labels in status column
 longtest <- melt_roc(s, d = "status", m = metrics) # merge into long data (all metrics together in one column)
 p <- ggplot(longtest, aes(d = D, m = M, color = name)) + geom_roc(labels=FALSE, increasing=FALSE) + style_roc() # plot ROCs
-aucs <- data.frame(metric=metrics, auc=calc_auc(p)$AUC)[order(-aucs$auc),] #calculate AUCs and sort by AUC value
+aucs <- data.frame(metric=metrics, auc=calc_auc(p)$AUC)
+aucs <- aucs[order(-aucs$auc),] #calculate AUCs and sort by AUC value
