@@ -13,7 +13,6 @@ graphs <- build_gene_graphs(lung, cells, metrics)
 # mutinfo functions remove '-' characters
 graphs$MI <- graphs$MI %>% activate(nodes) %>% mutate(name = pears_names)
 
-
 string_db <- STRINGdb$new(version="11", score_threshold=200, input_directory=".", species=9606)
 
 verts <- graphs[[1]] %>% activate(nodes) %>% as.data.frame # get vertices names
@@ -35,11 +34,6 @@ calc_score <- function(g, mapped, string_subset, to_remove) {
 }
 scores <- lapply(graphs, calc_score, mapped, string_subset, to_remove)
 
-for (i in 1:length(mut)) {
-  if (mut[i] != pears[i]) {
-    print(paste(mut[i], pears[i]))
-  }
-}
 names(scores) <- metrics
 s <- data.frame(scores)
 s$status <- as.vector(string_subset) # score matrix w/ labels in status column
