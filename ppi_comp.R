@@ -11,17 +11,20 @@ metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
   'weighted_rank', 'hamming', 'rho_p', 'phi_s')
 graphs <- build_gene_graphs(lung, cells, metrics)
 # mutinfo functions remove '-' characters
+pears_names <- graphs$pearson %>% pull(name)
 graphs$MI <- graphs$MI %>% activate(nodes) %>% mutate(name = pears_names)
 
-string_db <- STRINGdb$new(version="11", score_threshold=200, input_directory=".", species=9606)
+string_db <- STRINGdb$new(version="11", score_threshold=50, input_directory=".", species=9606)
 
 verts <- graphs[[1]] %>% activate(nodes) %>% as.data.frame # get vertices names
 mapped <- string_db$map(verts, "name", removeUnmappedRows = TRUE) # map to string_ids
 to_remove <- verts$name[which(!(verts$name %in% mapped$name))] # remove unmapped vertices
 mapped <- mapped[mapped$name %in% intersect(verts$name, mapped$name),] 
 mapped <- mapped[!duplicated(mapped$name),] # some datasets have duplicates
-string_subset <- string_db$get_subnetwork(mapped$STRING_id) %>% get.adjacency
-string_subset <- string_subset / 2 # adjacency matrix has 2 if edge exists, want it to be 0/1
+string_subset <- string_db$get_subnetwork(mapped$STRING_id)
+string_subset <- delete.edges(string_subset, which(E(string_subset)$experiments < 400)) %>%
+                 as_adjacency_matrix
+string_subset <- string_subset / 2# adjacency matrix has 2 if edge exists, want it to be 0/1
 
 calc_score <- function(g, mapped, string_subset, to_remove) {
   g <- as.igraph(g) %>%

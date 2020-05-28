@@ -12,7 +12,7 @@ library(WGCNA)
 
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics
-build_gene_graphs <- function(obj, cells, metrics, num_genes=800) {
+build_gene_graphs <- function(obj, cells, metrics, num_genes=200) {
     genes <- head(VariableFeatures(obj), num_genes) # top 70 most variable genes
     counts <- GetAssayData(object=obj,slot="counts")[genes, ] %>% as.matrix # rows = genes, columns = cells
     log_counts <- GetAssayData(object=obj,slot="scale.data")[genes, ] %>% as.matrix # rows = genes, columns = cells
