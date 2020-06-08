@@ -1,14 +1,9 @@
-#loading GEO database GSE103691
 library(Seurat)
 library(GEOquery)
 source('dimes.R')
 
-
-#10X data
-geo <- getGEO("GSE103867")
-exprs <- readMM("GSE103867/GSE103867_matrix.mtx")
-barcodes <- read.table("GSE103867/GSE103867_barcodes.tsv")$V1
-genes <- read.table("GSE103867/GSE103867_genes.tsv")$V1
+geo <- getGEO("GSE81861")
+data <- read.csv("crc/GSE81861_Cell_Line_COUNT.csv")
 rownames(exprs) <- genes
 colnames(exprs) <- barcodes
 liver <- CreateSeuratObject(counts=exprs, min.cells=3, min.features=200)
@@ -17,4 +12,5 @@ liver <- FindVariableFeatures(liver)
 liver <- ScaleData(object=liver, features=rownames(liver))
 #only want the first 2 samples (cell lines)
 liver_cells <- colnames(liver)[grep("1|2", colnames(liver))]
-aucs <- ppi_comp(liver, liver_cells)
+
+crc_aucs <- ppi_comp(liver, liver_cells)
