@@ -1,5 +1,6 @@
 library(Seurat)
 library(readxl)
+source("dimes.R")
 load("./adenoallraw.RData")
 type <- "tumor"
 lung <- CreateSeuratObject(adeno.all$TUMOR, min.cells = 3, min.features = 200, project = "nsclc")
@@ -15,3 +16,5 @@ all.genes <- rownames(x = lung)
 lung <- ScaleData(object = lung, features = all.genes)
 cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4),]$cell
 rm(list = c("metadata", "strsplit.ind2", "all.genes"))
+
+ppi_comp(lung, cells)
