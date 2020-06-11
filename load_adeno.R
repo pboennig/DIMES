@@ -17,4 +17,4 @@ lung <- ScaleData(object = lung, features = all.genes)
 adeno_cells <- metadata[metadata$'PatientNumber MS' %in% c(3:4),]$cell
 rm(list = c("metadata", "strsplit.ind2", "all.genes"))
 
-ppi_comp(lung, adeno_cells)
+lung_aucs <- ppi_comp(lung, adeno_cells)

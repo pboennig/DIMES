@@ -5,7 +5,7 @@ presentations/
 .Rhistory
 .Rapp.history
 # Session Data files
-.RData
+*.RData
 # User-specific files
 .Ruserdata
 # Example code in package build process
@@ -35,3 +35,5 @@ docs/
 9606.protein.links.v11.0.txt.gz
 9606.protein.info.v11.0.txt.gz
 9606.protein.aliases.v11.0.txt.gz
+.RDataTmp
+.RDataTmp1

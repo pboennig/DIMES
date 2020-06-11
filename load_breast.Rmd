@@ -1,0 +1,101 @@
+---
+title: "breastcancerCellLIne_DIMES"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source("dimes.R")
+library(GEOquery)
+library(Seurat)
+```
+
+```{r}
+GSE114459.counts <- read.csv("cell_line/GSE114459/GSE114459_Polyak.csv")
+GSE114459.geo <- getGEO('GSE114459')
+pdata <- pData(GSE114459.geo$GSE114459_series_matrix.txt.gz)
+```
+
+Pulling out only the parental line, otherwise we have to correct for batches across the cell line and that will introduce negative numbers
+```{r}
+GSE114459.parental <- GSE114459.counts[,grep("Parental",colnames(GSE114459.counts))]
+GSE114459.obj <- CreateSeuratObject(GSE114459.parental, 
+                                    min.cells = 3, min.features = 200)
+```
+Calculate mitochondria count per cell
+```{r}
+GSE114459.obj[["percent.mt"]] <- PercentageFeatureSet(GSE114459.obj, 
+                                                          pattern = "^MT-")
+```
+
+Plot cell features. This data looks like it has been polished since nFeature is greater than 2000. The usual cut-off is between 200 - 6000. Cell line data is newer for me so this might be normal in cell lines. The mitochondria content is pretty high, which indicates a lot of dead cells or doublets. A good cut-off for mitochondria count in healthy cells is 5-10%
+```{r}
+VlnPlot(GSE114459.obj, 
+        features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+Remove doublets
+```{r}
+GSE114459.obj <- subset(GSE114459.obj, percent.mt < 10)
+```
+
+Normalize/Scale data
+Since we aren't really using the normalize and scale feature, we can be more lenient in how we do this and just use standard parameters
+```{r}
+GSE114459.obj <- NormalizeData(GSE114459.obj)
+GSE114459.obj <- ScaleData(GSE114459.obj)
+```
+
+```{r}
+GSE114459.obj <- FindVariableFeatures(GSE114459.obj) #necessary for ppi_comp
+gse114459.aucs <- ppi_comp(GSE114459.obj, colnames(GSE114459.obj))
+write.csv(gse114459.aucs,file="aucs/MCF7.csv")
+```
+
+Read in count and metadata for second dataset *can skip*
+```{r}
+GSE131984.counts <- read.csv("cell_line/GSE131984/GSE131984_scRNA_counts.txt",
+                             sep="\t")
+colnames(GSE131984.counts) <- gsub("\\.", "-", colnames(GSE131984.counts))
+  
+GSE131984.meta <- read.csv("cell_line/GSE131984/GSE131984_scRNA_metadata.txt",
+                           sep="\t")
+```
+
+```{r}
+GSE131984.meta.pre <- GSE131984.meta[which(GSE131984.meta$orig.ident == "Pre"),]
+GSE131984.pre.counts <- GSE131984.counts[,which(colnames(GSE131984.counts) %in% 
+                                                  rownames(GSE131984.meta.pre))]
+```
+
+Making Seurat object and adding metadata
+```{r}
+GSE131984.obj <- CreateSeuratObject(GSE131984.counts, 
+                                    min.cells = 3, min.features = 200)
+GSE131984.obj <- AddMetaData(object = GSE131984.obj, metadata = GSE131984.meta) 
+```
+
+Calculating mitochondira count in each cell
+```{r}
+GSE131984.pre.obj <- subset(GSE131984.obj, orig.ident == "Pre")
+GSE131984.pre.obj[["percent.mt"]] <- PercentageFeatureSet(GSE131984.pre.obj, 
+                                                          pattern = "^MT-")
+```
+
+```{r}
+GSE131984.pre.obj <- NormalizeData(GSE131984.pre.obj)
+GSE131984.pre.obj <- ScaleData(GSE131984.pre.obj)
+```
+
+```{r}
+GSE131984.pre.obj <- FindVariableFeatures(GSE131984.pre.obj)
+GSE131984.aucs <- ppi_comp(GSE131984.pre.obj, colnames(GSE131984.pre.obj))
+write.csv(GSE131984.aucs, file="aucs/SUM159.csv")
+```
+
+
+
+
+
+
+
+

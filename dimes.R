@@ -15,7 +15,7 @@ library(plotROC)
 
 #' Calculates the AUCs for different *metrics* on a particular Seurat *obj* by comparing
 #' to STRINGdb network
-ppi_comp <- function(obj, cells, num_genes=200, metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
+ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
                                                           'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
                                                           'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
   genes <- data.frame(gene=head(VariableFeatures(obj), num_genes)) # top 70 most variable genes
@@ -42,7 +42,7 @@ ppi_comp <- function(obj, cells, num_genes=200, metrics=c('pearson', 'spearman',
   longtest <- melt_roc(s, d = "status", m = metrics) # merge into long data (all metrics together in one column)
   p <- ggplot(longtest, aes(d = D, m = M, color = name)) + geom_roc(labels=FALSE, increasing=FALSE) + style_roc() # plot ROCs
   aucs <- data.frame(metric=metrics, auc=calc_auc(p)$AUC)
-  aucs <- aucs[order(-aucs$auc),] #calculate AUCs and sort by AUC value
+  rm(list=setdiff(ls(), "aucs"))
   aucs
 }
 
