@@ -42,11 +42,7 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson
   longtest <- melt_roc(s, d = "status", m = metrics) # merge into long data (all metrics together in one column)
   p <- ggplot(longtest, aes(d = D, m = M, color = name)) + geom_roc(labels=FALSE, increasing=FALSE) + style_roc() # plot ROCs
   aucs <- data.frame(metric=metrics, auc=calc_auc(p)$AUC)
-<<<<<<< HEAD:dimes.R
   rm(list=setdiff(ls(), "aucs"))
-=======
-  aucs <- aucs[order(-aucs$auc),] #calculate AUCs and sort by AUC value
->>>>>>> 166dbc54a8b84aabb0b8e68bc47e7ffaf4dbfc31:dimess.R
   aucs
 }
 
