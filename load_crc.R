@@ -1,4 +1,5 @@
 library(Seurat)
+<<<<<<< HEAD
 source('dimes.R')
 
 exprs <- read.csv("cell_line/GSE81861/GSE81861_Cell_Line_COUNT.csv", row.names=1)
@@ -26,3 +27,20 @@ for (i in 1:length(cell_lines)) {
   file_name <- paste("aucs/", cell_lines[i], ".csv", sep="")
   write.csv(df, file=file_name)
 }
+=======
+library(GEOquery)
+source('dimes.R')
+
+geo <- getGEO("GSE81861")
+data <- read.csv("crc/GSE81861_Cell_Line_COUNT.csv")
+rownames(exprs) <- genes
+colnames(exprs) <- barcodes
+liver <- CreateSeuratObject(counts=exprs, min.cells=3, min.features=200)
+liver <- NormalizeData(object = liver, normalization.method = "LogNormalize", scale.factor = 1e4)
+liver <- FindVariableFeatures(liver)
+liver <- ScaleData(object=liver, features=rownames(liver))
+#only want the first 2 samples (cell lines)
+liver_cells <- colnames(liver)[grep("1|2", colnames(liver))]
+
+crc_aucs <- ppi_comp(liver, liver_cells)
+>>>>>>> 166dbc54a8b84aabb0b8e68bc47e7ffaf4dbfc31
