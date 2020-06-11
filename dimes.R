@@ -15,11 +15,7 @@ library(plotROC)
 
 #' Calculates the AUCs for different *metrics* on a particular Seurat *obj* by comparing
 #' to STRINGdb network
-<<<<<<< HEAD:dimes.R
 ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
-=======
-ppi_comp <- function(obj, cells, num_genes=200, metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
->>>>>>> 166dbc54a8b84aabb0b8e68bc47e7ffaf4dbfc31:dimess.R
                                                           'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
                                                           'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
   genes <- data.frame(gene=head(VariableFeatures(obj), num_genes)) # top 70 most variable genes

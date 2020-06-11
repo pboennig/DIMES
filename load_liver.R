@@ -3,7 +3,6 @@ library(Seurat)
 library(GEOquery)
 source('dimes.R')
 
-<<<<<<< HEAD
 #10X data
 exprs <- readMM("cell_line/GSE103867/GSE103867_matrix.mtx")
 barcodes <- read.table("cell_line/GSE103867/GSE103867_barcodes.tsv")$V1
@@ -29,20 +28,3 @@ huh7_aucs <- ppi_comp(objects[[2]], huh7)
 write.csv(huh1_aucs, file="aucs/HUH1.csv")
 write.csv(huh7_aucs, file="aucs/HUH7.csv")
 rm(list=ls())
-=======
-
-#10X data
-geo <- getGEO("GSE103867")
-exprs <- readMM("GSE103867/GSE103867_matrix.mtx")
-barcodes <- read.table("GSE103867/GSE103867_barcodes.tsv")$V1
-genes <- read.table("GSE103867/GSE103867_genes.tsv")$V1
-rownames(exprs) <- genes
-colnames(exprs) <- barcodes
-liver <- CreateSeuratObject(counts=exprs, min.cells=3, min.features=200)
-liver <- NormalizeData(object = liver, normalization.method = "LogNormalize", scale.factor = 1e4)
-liver <- FindVariableFeatures(liver)
-liver <- ScaleData(object=liver, features=rownames(liver))
-#only want the first 2 samples (cell lines)
-liver_cells <- colnames(liver)[grep("1|2", colnames(liver))]
-aucs <- ppi_comp(liver, liver_cells)
->>>>>>> 166dbc54a8b84aabb0b8e68bc47e7ffaf4dbfc31
