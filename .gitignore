@@ -37,3 +37,4 @@ docs/
 9606.protein.aliases.v11.0.txt.gz
 .RDataTmp
 .RDataTmp1
+cell_line/*
