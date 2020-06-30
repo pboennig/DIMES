@@ -19,8 +19,9 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson
                                                           'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
                                                           'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
   genes <- data.frame(gene=head(VariableFeatures(obj), num_genes)) # top 70 most variable genes
-  string_db <- STRINGdb$new(version="11", score_threshold=50, input_directory=".", species=9606)
+  string_db <- STRINGdb$new(version="11", score_threshold=50, input_directory="STRINGdb/", species=9606)
   mapped <- string_db$map(genes, "gene", removeUnmappedRows=TRUE)
+  print(dim(mapped))
   graphs <- build_gene_graphs(obj, cells, mapped$gene, metrics)
   
   # mutinfo functions remove '-' characters

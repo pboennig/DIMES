@@ -38,3 +38,6 @@ liver <- c("HUH1", "HUH7")
 export_formattable(make_tables(liver), "aucs/liver.png", width="25%")
 crc <- c("A549", "H1437", "HCT116", "IMR90", "GM12878", "H1")
 export_formattable(make_tables(crc), "aucs/crc.png", width="50%")
+leukemia <- c("K652")
+export_formattable(make_tables(leukemia), "aucs/leukemia.png", width="50%")
+
