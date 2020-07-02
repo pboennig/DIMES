@@ -20,9 +20,11 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson
                                                           'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
   genes <- data.frame(gene=head(VariableFeatures(obj), num_genes)) # top 70 most variable genes
   string_db <- STRINGdb$new(version="11", score_threshold=50, input_directory="STRINGdb/", species=9606)
-  mapped <- string_db$map(genes, "gene", removeUnmappedRows=TRUE)
-  print(dim(mapped))
+  mapped <- string_db$map(genes, "gene", removeUnmappedRows=TRUE, takeFirst = TRUE)
+  mapped <- mapped[!duplicated(mapped$gene),]
   graphs <- build_gene_graphs(obj, cells, mapped$gene, metrics)
+  mapped <- mapped[mapped$gene %in% V(graphs[[1]])$name, ]
+  # filter out genes that didn't appear in assayData 
   
   # mutinfo functions remove '-' characters
   if ('MI' %in% metrics) {
@@ -34,7 +36,8 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson
   string_subset <- delete.edges(string_subset, which(E(string_subset)$experiments < 400)) %>%
                    as_adjacency_matrix
   string_subset <- string_subset / 2# adjacency matrix has 2 if edge exists, want it to be 0/1
-  
+  mapped_string_ids <- rownames(string_subset)[rownames(string_subset) %in% mapped$STRING_id]
+  string_subset <- string_subset[mapped_string_ids, ]
   scores <- lapply(graphs, calc_score, mapped, string_subset)
   
   names(scores) <- metrics
@@ -52,7 +55,8 @@ calc_score <- function(g, mapped, string_subset) {
     g <- as.igraph(g)
     g <- set.vertex.attribute(g, "name", value=mapped[which(mapped$gene==V(g)$name),]$STRING_id)
     score <- get.adjacency(g, attr="weight") # higher score -> closer distance
-    correspondence <- match(rownames(string_subset), rownames(score))
+    mapped_string_ids <- rownames(string_subset)[rownames(string_subset) %in% rownames(score)]
+    correspondence <- match(mapped_string_ids, rownames(score))
     score <- score[correspondence,]
     score[,correspondence] %>% as.vector 
 }
@@ -60,8 +64,13 @@ calc_score <- function(g, mapped, string_subset) {
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics
 build_gene_graphs <- function(obj, cells, genes, metrics) {
-    counts <- GetAssayData(object=obj,slot="counts")[genes, ] %>% as.matrix # rows = genes, columns = cells
-    log_counts <- GetAssayData(object=obj,slot="scale.data")[genes, ] %>% as.matrix # rows = genes, columns = cells
+    counts <- GetAssayData(object=obj,slot="counts")
+    log_counts <- GetAssayData(object=obj,slot="scale.data")
+    genes <- genes[(genes %in% rownames(counts)) & (genes %in% rownames(counts))]
+    counts <- counts[genes,] %>% as.matrix
+    log_counts <- log_counts[genes,] %>% as.matrix
+    
+    
     cells <- cells[cells %in% colnames(counts)] # only take cells that are actually in our counts
     count_mat <- t(as.matrix(counts[, cells])) # dismay expects as transpose of Seurat default
     log_mat <- t(as.matrix(log_counts[, cells])) # dismay expects as transpose of Seurat default

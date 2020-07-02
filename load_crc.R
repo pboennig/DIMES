@@ -18,7 +18,7 @@ make_objs <- function(cell_line, exprs) {
   ScaleData(object=crc, features=rownames(crc))
 }
 cell_lines <- c("A549", "H1437", "HCT116", "IMR90", "GM12878", "H1")
-objs <- sapply(X=cell_lines, FUN=make_objs, exprs=exprs)
+objs <- sapply(Xocell_lines, FUN=make_objs, exprs=exprs)
 aucs <- sapply(X=objs, FUN=ppi_comp) 
 for (i in 1:length(cell_lines)) {
   j = 2 * i - 1
