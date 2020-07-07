@@ -54,6 +54,8 @@ cellLineMap[["Liver"]] <- c("HUH1", "HUH7")
 cellLineMap[["CRC"]] <- c("A549", "H1437", "HCT116", "IMR90", "GM12878", "H1")
 cellLineMap[["Leukemia"]] <- c("K652")
 cellLineMap[["Melanoma"]] <- c("A375", "451Lu")
+cellLineMap[["Gastric"]] <- c("HGC-27_1", "HGC-27_2", "KATOIII", "MKN-45", "NCI-N87", "NUGC-4",
+                              "SNU-16_1", "SNU-16_2", "SNU-601",  "SNU-638",  "SNU-668")
 tibbles <- lapply(cellLineMap, make_tibbles)
 map2(tibbles, names(cellLineMap), save_tables)
 map2(tibbles, names(cellLineMap), plot_cancer)

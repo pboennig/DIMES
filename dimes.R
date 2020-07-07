@@ -15,15 +15,13 @@ library(plotROC)
 
 #' Calculates the AUCs for different *metrics* on a particular Seurat *obj* by comparing
 #' to STRINGdb network
-ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
-                                                          'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
-                                                          'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
-  genes <- data.frame(gene=head(VariableFeatures(obj), num_genes)) # top 70 most variable genes
+ppi_comp <- function(obj, cells=colnames(obj), num_genes=500, metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI')) {
+                                                          #'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
+                                                          #'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
+  genes <- data.frame(gene=head(VariableFeatures(obj), num_genes)) 
   string_db <- STRINGdb$new(version="11", score_threshold=50, input_directory="STRINGdb/", species=9606)
-  mapped <- string_db$map(genes, "gene", removeUnmappedRows=TRUE, takeFirst = TRUE)
-  mapped <- mapped[!duplicated(mapped$gene),]
-  graphs <- build_gene_graphs(obj, cells, mapped$gene, metrics)
-  mapped <- mapped[mapped$gene %in% V(graphs[[1]])$name, ]
+  mapped <- string_db$map(genes, "gene", removeUnmappedRows=TRUE)
+  graphs <- build_gene_graphs(obj, cells, mapped, metrics)
   # filter out genes that didn't appear in assayData 
   
   # mutinfo functions remove '-' characters
@@ -32,12 +30,10 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson
     graphs$MI <- graphs$MI %>% activate(nodes) %>% mutate(name = pears_names)
   }
   
-  string_subset <- string_db$get_subnetwork(mapped$STRING_id)
+  string_subset <- string_db$get_subnetwork(graphs[[1]] %>% pull(name))
   string_subset <- delete.edges(string_subset, which(E(string_subset)$experiments < 400)) %>%
                    as_adjacency_matrix
   string_subset <- string_subset / 2# adjacency matrix has 2 if edge exists, want it to be 0/1
-  mapped_string_ids <- rownames(string_subset)[rownames(string_subset) %in% mapped$STRING_id]
-  string_subset <- string_subset[mapped_string_ids, ]
   scores <- lapply(graphs, calc_score, mapped, string_subset)
   
   names(scores) <- metrics
@@ -50,46 +46,48 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson
   aucs
 }
 
-#' Calculate scores for AUC calculation
+#' Calculate scores for AUC calculation based on correspondence between genes and STRING_ids
 calc_score <- function(g, mapped, string_subset) {
-    g <- as.igraph(g)
-    g <- set.vertex.attribute(g, "name", value=mapped[which(mapped$gene==V(g)$name),]$STRING_id)
-    score <- get.adjacency(g, attr="weight") # higher score -> closer distance
-    mapped_string_ids <- rownames(string_subset)[rownames(string_subset) %in% rownames(score)]
-    correspondence <- match(mapped_string_ids, rownames(score))
-    score <- score[correspondence,]
-    score[,correspondence] %>% as.vector 
+  g <- as.igraph(g)
+  score <- get.adjacency(g, attr="weight") # higher score -> closer distance, so we invert
+  mapped_string_ids <- intersect(rownames(string_subset), rownames(score))
+  correspondence <- match(mapped_string_ids, rownames(score))
+  score <- score[correspondence,]
+  score[,correspondence] %>% as.vector 
 }
+
 
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics
-build_gene_graphs <- function(obj, cells, genes, metrics) {
+build_gene_graphs <- function(obj, cells, mapped, metrics) {
     counts <- GetAssayData(object=obj,slot="counts")
     log_counts <- GetAssayData(object=obj,slot="scale.data")
-    genes <- genes[(genes %in% rownames(counts)) & (genes %in% rownames(counts))]
-    counts <- counts[genes,] %>% as.matrix
-    log_counts <- log_counts[genes,] %>% as.matrix
+    mapped <- mapped[mapped$gene %in% rownames(counts),]
+    counts <- counts[mapped$gene,] %>% as.matrix
+    log_counts <- log_counts[mapped$gene,] %>% as.matrix
     
+    counts <- counts[order(rownames(counts)),]
+    log_counts <- counts[order(rownames(log_counts)),]
+    mapped <- mapped[order(mapped$gene),]
+    rownames(counts) <- mapped$STRING_id 
+    rownames(log_counts) <- mapped$STRING_id 
     
-    cells <- cells[cells %in% colnames(counts)] # only take cells that are actually in our counts
-    count_mat <- t(as.matrix(counts[, cells])) # dismay expects as transpose of Seurat default
-    log_mat <- t(as.matrix(log_counts[, cells])) # dismay expects as transpose of Seurat default
+    cells <- intersect(cells, colnames(counts)) # only take cells that are actually in our counts
+    count_mat <- t(counts[, cells]) # dismay expects as transpose of Seurat default
+    log_mat <- t(log_counts[, cells]) # dismay expects as transpose of Seurat default
     graphs <- lapply(metrics, dist_matrix, count_mat, log_mat)
     names(graphs) <- metrics
     graphs
 }
 
-#' Wrapper around dismay with inversion to convert to distance matrix.
-dist_matrix <-function(metric, count_mat, log_mat, eps=.001) {
+#' Wrapper around dismay, switch on metrics that need raw counts
+dist_matrix <-function(metric, count_mat, log_mat) {
     if (metric %in% c('phi_s', 'rho_p')) {
         sim_mat <- dismay(count_mat, metric) 
     } else {
         sim_mat <- dismay(log_mat, metric) 
     }
-    sim_mat <- sim_mat - min(sim_mat) + eps # make all positive with eps for numerical stability
-    d_mat <- 1 / (sim_mat) # convert to distance matrix
-    diag(d_mat) <- 0 # distance from gene to itself = 0
-    as_tbl_graph(d_mat)
+    as_tbl_graph(sim_mat)
 }
 
 # 2. Functions for saving and visualizing networks ---------------------------------------------------
