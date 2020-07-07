@@ -15,9 +15,9 @@ library(plotROC)
 
 #' Calculates the AUCs for different *metrics* on a particular Seurat *obj* by comparing
 #' to STRINGdb network
-ppi_comp <- function(obj, cells=colnames(obj), num_genes=500, metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI')) {
-                                                          #'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
-                                                          #'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
+ppi_comp <- function(obj, cells=colnames(obj), num_genes=200, metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
+                                                          'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
+                                                          'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
   genes <- data.frame(gene=head(VariableFeatures(obj), num_genes)) 
   string_db <- STRINGdb$new(version="11", score_threshold=50, input_directory="STRINGdb/", species=9606)
   mapped <- string_db$map(genes, "gene", removeUnmappedRows=TRUE)
@@ -30,7 +30,7 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes=500, metrics=c('pearson
     graphs$MI <- graphs$MI %>% activate(nodes) %>% mutate(name = pears_names)
   }
   
-  string_subset <- string_db$get_subnetwork(graphs[[1]] %>% pull(name))
+  string_subset <- string_db$get_subnetwork(mapped$STRING_id)
   string_subset <- delete.edges(string_subset, which(E(string_subset)$experiments < 400)) %>%
                    as_adjacency_matrix
   string_subset <- string_subset / 2# adjacency matrix has 2 if edge exists, want it to be 0/1
@@ -48,8 +48,9 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes=500, metrics=c('pearson
 
 #' Calculate scores for AUC calculation based on correspondence between genes and STRING_ids
 calc_score <- function(g, mapped, string_subset) {
-  g <- as.igraph(g)
-  score <- get.adjacency(g, attr="weight") # higher score -> closer distance, so we invert
+  ig <- as.igraph(g) 
+  ig <- set.vertex.attribute(ig, "name", value=mapped[which(mapped$gene==V(ig)$name),]$STRING_id)
+  score <- get.adjacency(ig, attr="weight")
   mapped_string_ids <- intersect(rownames(string_subset), rownames(score))
   correspondence <- match(mapped_string_ids, rownames(score))
   score <- score[correspondence,]
@@ -65,12 +66,6 @@ build_gene_graphs <- function(obj, cells, mapped, metrics) {
     mapped <- mapped[mapped$gene %in% rownames(counts),]
     counts <- counts[mapped$gene,] %>% as.matrix
     log_counts <- log_counts[mapped$gene,] %>% as.matrix
-    
-    counts <- counts[order(rownames(counts)),]
-    log_counts <- counts[order(rownames(log_counts)),]
-    mapped <- mapped[order(mapped$gene),]
-    rownames(counts) <- mapped$STRING_id 
-    rownames(log_counts) <- mapped$STRING_id 
     
     cells <- intersect(cells, colnames(counts)) # only take cells that are actually in our counts
     count_mat <- t(counts[, cells]) # dismay expects as transpose of Seurat default
