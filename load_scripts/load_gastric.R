@@ -17,7 +17,9 @@ read_MM_triplet <- function(basename) {
   ScaleData(object=gastric, features=rownames(gastric))
 }
 
+metrics <- c('pearson', 'spearman', 'kendall', 'bicor', 'binomial','cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
+                                                          'weighted_rank', 'hamming', 'rho_p', 'phi_s')
 obj <- read_MM_triplet(basename)
-aucs <- ppi_comp(obj)
+aucs <- ppi_comp(obj, metrics=metrics)
 cell_line_name <- gsub("^[^_]*_", "", basename)
-write.csv(auc, here("aucs",glue("{cell_line_name}.csv")))
+write.csv(aucs, here("aucs",glue("{cell_line_name}.csv")))

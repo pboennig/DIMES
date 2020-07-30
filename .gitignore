@@ -38,3 +38,4 @@ docs/
 .RDataTmp
 .RDataTmp1
 load_scripts/cell_line/*
+Rplots.pdf
