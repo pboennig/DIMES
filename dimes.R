@@ -72,8 +72,12 @@ calc_score <- function(g, mapped, string_subset) {
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics
 build_gene_graphs <- function(obj, cells, mapped, metrics) {
-    counts <- GetAssayData(object=obj,slot="counts")
-    log_counts <- GetAssayData(object=obj,slot="scale.data")
+    counts <- GetAssayData(object=obj,slot="counts",assay="RNA")
+    scale_assay <- "RNA"
+    if ("integrated" %in% Assays(obj)) {
+      scale_assay <- "integrated"
+    }
+    log_counts <- GetAssayData(object=obj,slot="scale.data",assay=scale_assay)
     mapped <- mapped[mapped$gene %in% rownames(counts),]
     counts <- counts[mapped$gene,] %>% as.matrix
     log_counts <- log_counts[mapped$gene,] %>% as.matrix
