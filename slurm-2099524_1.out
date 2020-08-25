@@ -1,0 +1,130 @@
+1
+GSM4238683_NCI-N87
+Loading required package: tidygraph
+
+Attaching package: ‘tidygraph’
+
+The following object is masked from ‘package:stats’:
+
+    filter
+
+Loading required package: ggplot2
+Loading required package: ggraph
+Loading required package: purrr
+Loading required package: Matrix
+Loading required package: dismay
+
+Attaching package: ‘dismay’
+
+The following object is masked from ‘package:stats’:
+
+    binomial
+
+Loading required package: pryr
+Registered S3 method overwritten by 'pryr':
+  method      from
+  print.bytes Rcpp
+
+Attaching package: ‘pryr’
+
+The following objects are masked from ‘package:purrr’:
+
+    compose, partial
+
+Loading required package: wesanderson
+Loading required package: tibble
+Loading required package: dplyr
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: WGCNA
+Loading required package: dynamicTreeCut
+Loading required package: fastcluster
+
+Attaching package: ‘fastcluster’
+
+The following object is masked from ‘package:stats’:
+
+    hclust
+
+
+
+Attaching package: ‘WGCNA’
+
+The following object is masked from ‘package:stats’:
+
+    cor
+
+Loading required package: STRINGdb
+Loading required package: igraph
+
+Attaching package: ‘igraph’
+
+The following objects are masked from ‘package:dplyr’:
+
+    as_data_frame, groups, union
+
+The following object is masked from ‘package:tibble’:
+
+    as_data_frame
+
+The following object is masked from ‘package:pryr’:
+
+    compose
+
+The following objects are masked from ‘package:purrr’:
+
+    compose, simplify
+
+The following object is masked from ‘package:tidygraph’:
+
+    groups
+
+The following objects are masked from ‘package:stats’:
+
+    decompose, spectrum
+
+The following object is masked from ‘package:base’:
+
+    union
+
+Loading required package: plotROC
+Loading required package: glue
+
+Attaching package: ‘glue’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+here() starts at /home/pboennig/scRNA
+Performing log-normalization
+0%   10   20   30   40   50   60   70   80   90   100%
+[----|----|----|----|----|----|----|----|----|----|
+**************************************************|
+Calculating gene variances
+0%   10   20   30   40   50   60   70   80   90   100%
+[----|----|----|----|----|----|----|----|----|----|
+**************************************************|
+Calculating feature variances of standardized and clipped values
+0%   10   20   30   40   50   60   70   80   90   100%
+[----|----|----|----|----|----|----|----|----|----|
+**************************************************|
+Centering and scaling data matrix
+  |                                                                              |                                                                      |   0%  |                                                                              |=====                                                                 |   7%  |                                                                              |==========                                                            |  14%  |                                                                              |===============                                                       |  21%  |                                                                              |====================                                                  |  29%  |                                                                              |=========================                                             |  36%  |                                                                              |==============================                                        |  43%  |                                                                              |===================================                                   |  50%  |                                                                              |========================================                              |  57%  |                                                                              |=============================================                         |  64%  |                                                                              |==================================================                    |  71%  |                                                                              |=======================================================               |  79%  |                                                                              |============================================================          |  86%  |                                                                              |=================================================================     |  93%  |                                                                              |======================================================================| 100%
+Warning:  we couldn't map to STRING 6% of your identifiersDIMES: built graph for pearson
+
+Attaching package: ‘entropy’
+
+The following objects are masked from ‘package:infotheo’:
+
+    discretize, entropy
+
