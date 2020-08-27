@@ -1,9 +1,8 @@
 #!/bin/bash
 #
 #SBATCH --job-name=mi_gastric_array
-#SBATCH --mail-user=pboennig@stanford.edu
-#SBATCH --mail-type=ALL
 #SBATCH --time=12:00:00
+#SBATCH --out=output/single/single_%a.out
 #SBATCH --array=1-4 # job array index
 
 module load r

@@ -63,6 +63,7 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes= nrow(obj), metrics=c('
                    as_adjacency_matrix %>% as.matrix
   string_subset <- string_subset / 2# adjacency matrix has 2 if edge exists, want it to be 0/1
   scores <- lapply(graphs, calc_score, mapped, string_subset)
+  rm(graphs) # no longer need graphs (they take up a bunch of memory)
   print("DIMES: Scores calculated")  
   
   string_subset <- string_subset[rownames(scores[[1]]), ]
@@ -94,8 +95,12 @@ calc_score <- function(g, mapped, string_subset) {
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics
 build_gene_graphs <- function(obj, cells, mapped, metrics) {
-    counts <- GetAssayData(object=obj,slot="counts")
-    log_counts <- GetAssayData(object=obj,slot="scale.data")
+    counts <- GetAssayData(object=obj,slot="counts",assay="RNA")
+    scale_assay <- "RNA"
+    if ("integrated" %in% Assays(obj)) {
+      scale_assay <- "integrated"
+    }
+    log_counts <- GetAssayData(object=obj,slot="scale.data",assay=scale_assay)
     mapped <- mapped[mapped$gene %in% rownames(counts),]
     counts <- counts[mapped$gene,] %>% as.matrix
     log_counts <- log_counts[mapped$gene,] %>% as.matrix
