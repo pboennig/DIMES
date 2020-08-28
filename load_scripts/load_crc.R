@@ -5,6 +5,7 @@ source('dimes.R')
 library(purrr)
 library(glue)
 library(pryr)
+library(here)
 
 
 args = commandArgs(trailingOnly = TRUE)
@@ -27,4 +28,4 @@ crc <- FindVariableFeatures(crc)
 crc <- ScaleData(object=crc, features=rownames(crc))
 
 aucs <- ppi_comp(crc)
-write.csv(aucs, glue("aucs/{cell_line}.csv"))
+write.csv(aucs, here("results", "aucs", glue("{cell_line}.csv")))
