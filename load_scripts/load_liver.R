@@ -1,6 +1,5 @@
-#loading GEO database GSE103691
 library(Seurat)
-library(GEOquery)
+library("here")
 source('dimes.R')
 
 #10X data
@@ -25,6 +24,6 @@ make_obj <- function(cells, exprs) {
 objects <- sapply(X=list(huh1, huh7), FUN=make_obj, exprs=exprs)
 huh1_aucs <- ppi_comp(objects[[1]], huh1)
 huh7_aucs <- ppi_comp(objects[[2]], huh7)
-write.csv(huh1_aucs, file="aucs/HUH1.csv")
-write.csv(huh7_aucs, file="aucs/HUH7.csv")
+write.csv(huh1_aucs, here("results","aucs","HUH1.csv"))
+write.csv(huh7_aucs, here("results", "aucs", "HUH7.csv"))
 rm(list=ls())

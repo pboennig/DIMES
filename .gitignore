@@ -39,3 +39,4 @@ docs/
 load_scripts/cell_line/*
 Rplots.pdf
 *.out
+output/

@@ -74,7 +74,6 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes= nrow(obj), metrics=c('
   aucs <- sapply(X=predictors, FUN=function(pred) auc(status, pred, direction="<")[[1]])
   res <- data.frame(metric=metrics, auc=aucs)
   rownames(res) <- NULL
-  print(res)
   print("DIMES: Cleaning up...")
   rm(list=c("string_subset", "scores", "mapped", "string_db")) 
   gc()
