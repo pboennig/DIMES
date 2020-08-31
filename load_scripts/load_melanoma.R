@@ -16,4 +16,4 @@ cell_lines <- c("A375", "451Lu")
 objs <- sapply(X=cell_lines, FUN=make_objs, exprs=exprs)
 aucs <- lapply(X=objs, FUN=ppi_comp)
 map2(aucs, names(aucs), 
-     function(auc, cell_line) { write.csv(auc, glue("aucs/{cell_line}.csv"))})
+     function(auc, cell_line) { write.csv(auc, here("results","aucs",glue("{cell_line}.csv")))})

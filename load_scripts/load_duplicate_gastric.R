@@ -28,5 +28,5 @@ anchorSet <- FindIntegrationAnchors(object.list = replicateObjects, scale = F)
 allGenes <- intersect(rownames(replicateObjects[1]), rownames(replicateObjects[2]))
 mergedObject <- IntegrateData(anchorSet, normalization.method="SCT", features.to.integrate=allGenes)
 
-aucs <- ppi_comp(mergedObject, metrics=metrics)
+aucs <- ppi_comp(mergedObject)
 write.csv(aucs, here("results", "aucs",glue("{cell_line_name}.csv")))
