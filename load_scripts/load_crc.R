@@ -5,6 +5,7 @@ source('dimes.R')
 library(purrr)
 library(glue)
 library(pryr)
+library(here)
 
 
 args = commandArgs(trailingOnly = TRUE)
@@ -26,5 +27,7 @@ crc <- NormalizeData(object = crc, normalization.method = "LogNormalize", scale.
 crc <- FindVariableFeatures(crc)
 crc <- ScaleData(object=crc, features=rownames(crc))
 
-aucs <- ppi_comp(crc)
-write.csv(aucs, glue("aucs/{cell_line}.csv"))
+aucs <- ppi_comp(crc, metrics=c("pearson", "spearman"))
+write.csv(aucs, here("results", "aucs", glue("{cell_line}_ps.csv")))
+aucs <- ppi_comp(crc, metrics=c("pearson", "spearman", "kendall"))
+write.csv(aucs, here("results", "aucs", glue("{cell_line}_psk.csv")))

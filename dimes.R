@@ -11,7 +11,7 @@ library(dplyr)
 library(WGCNA)
 library(STRINGdb)
 library(igraph)
-library(plotROC)
+library(pROC)
 library(glue)
 
 #' Calculates the AUCs for different *metrics* on a particular Seurat *obj* by comparing
@@ -46,15 +46,16 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes= nrow(obj), metrics=c('
   string_subset <- string_subset[rownames(scores[[1]]), ]
   string_subset <- string_subset[, colnames(scores[[1]])]
   names(scores) <- metrics
-  s <- data.frame(lapply(scores, as.vector))
-  s$status <- as.vector(string_subset) # score matrix w/ labels in status column
-  longtest <- melt_roc(s, d = "status", m = metrics) # merge into long data (all metrics together in one column)
-  p <- ggplot(longtest, aes(d = D, m = M, color = name)) + geom_roc(labels=FALSE, increasing=FALSE) + style_roc() # plot ROCs
-  aucs <- data.frame(metric=metrics, auc=calc_auc(p)$AUC)
+  predictors <-lapply(scores, as.vector)
+  status <- as.vector(string_subset) # score matrix w/ labels in status column
+  aucs <- sapply(X=predictors, FUN=function(pred) auc(status, pred, direction="<")[[1]])
+  res <- data.frame(metric=metrics, auc=aucs)
+  rownames(res) <- NULL
+  print(res)
   print("DIMES: Cleaning up...")
   rm(list=c("string_subset", "scores", "mapped", "string_db")) 
   gc()
-  aucs
+  res
 }
 
 #' Calculate scores for AUC calculation based on correspondence between genes and STRING_ids
