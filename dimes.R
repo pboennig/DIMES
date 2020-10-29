@@ -41,7 +41,12 @@ library(glue)
 #' to STRINGdb network
 ppi_comp <- function(obj, cells=colnames(obj), num_genes= nrow(obj), metrics=c('pearson', 'spearman', 'kendall', 'bicor', 'binomial', 'MI',
                                                           'cosine', 'jaccard', 'canberra', 'euclidean', 'manhattan',
-                                                          'weighted_rank', 'hamming', 'rho_p', 'phi_s')) {
+                                                          'weighted_rank', 'hamming', 'rho_p', 'phi_s'), run.PCA = FALSE, num.PCs = 30) {
+  if (run.PCA) {
+	# rho and phi require non-negative values, which we can't guarantee in PCA space
+	# jaccard returns 0 if all entries are nonzero, which is typically true in PCA space
+	metrics <- metrics[!(metrics %in% c('rho_p', 'phi_s', 'jaccard'))]
+  }
   if (num_genes < nrow(obj)) {
     genes <- data.frame(gene=head(VariableFeatures(obj), num_genes)) 
   } else {
@@ -49,7 +54,7 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes= nrow(obj), metrics=c('
   }
   string_db <- STRINGdb$new(version="11", score_threshold=50, input_directory="STRINGdb/", species=9606)
   mapped <- string_db$map(genes, "gene", removeUnmappedRows=TRUE)
-  graphs <- build_gene_graphs(obj, cells, mapped, metrics)
+  graphs <- build_gene_graphs(obj, cells, mapped, metrics, run.PCA=run.PCA, num.PCs=num.PCs)
   # filter out genes that didn't appear in assayData 
   print("DIMES: Graphs built")  
   # mutinfo functions remove '-' characters
@@ -69,9 +74,10 @@ ppi_comp <- function(obj, cells=colnames(obj), num_genes= nrow(obj), metrics=c('
   string_subset <- string_subset[rownames(scores[[1]]), ]
   string_subset <- string_subset[, colnames(scores[[1]])]
   names(scores) <- metrics
-  predictors <-lapply(scores, as.vector)
+  scores <- lapply(scores, as.vector)
   status <- as.vector(string_subset) # score matrix w/ labels in status column
-  aucs <- sapply(X=predictors, FUN=function(pred) auc(status, pred, direction="<")[[1]])
+  aucs <- sapply(X=scores, FUN=function(pred) auc(response=status, predictor=pred, direction="<")[[1]])
+  
   res <- data.frame(metric=metrics, auc=aucs)
   rownames(res) <- NULL
   print("DIMES: Cleaning up...")
@@ -94,7 +100,7 @@ calc_score <- function(g, mapped, string_subset) {
 
 #' Given seurat object *obj*, cell list *cells* and *metrics*, return *graphs*,
 #' where graphs$m is a tbl_graph composed using distance metric m from metrics
-build_gene_graphs <- function(obj, cells, mapped, metrics) {
+build_gene_graphs <- function(obj, cells, mapped, metrics, run.PCA, num.PCs) {
     counts <- GetAssayData(object=obj,slot="counts",assay="RNA")
     scale_assay <- "RNA"
     if ("integrated" %in% Assays(obj)) {
@@ -104,10 +110,17 @@ build_gene_graphs <- function(obj, cells, mapped, metrics) {
     mapped <- mapped[mapped$gene %in% rownames(counts),]
     counts <- counts[mapped$gene,] %>% as.matrix
     log_counts <- log_counts[mapped$gene,] %>% as.matrix
-    
+     
     cells <- intersect(cells, colnames(counts)) # only take cells that are actually in our counts
-    count_mat <- t(counts[, cells]) # dismay expects as transpose of Seurat default
-    log_mat <- t(log_counts[, cells]) # dismay expects as transpose of Seurat default
+    counts <- counts[, cells]
+    log_counts <- log_counts[, cells]
+    if (run.PCA) {
+	counts <- prcomp(counts)$x[,1:num.PCs]
+	log_counts <- prcomp(log_counts)$x[,1:num.PCs]
+    }
+    print(dim(counts))
+    count_mat <- t(counts) # dismay expects as transpose of Seurat default
+    log_mat <- t(log_counts) # dismay expects as transpose of Seurat default
     graphs <- lapply(metrics, dist_matrix, count_mat, log_mat)
     names(graphs) <- metrics
     graphs
@@ -116,7 +129,7 @@ build_gene_graphs <- function(obj, cells, mapped, metrics) {
 #' Wrapper around dismay, switch on metrics that need raw counts
 dist_matrix <-function(metric, count_mat, log_mat, eps=.001) {
     if (metric %in% c('phi_s', 'rho_p')) {
-        sim_mat <- dismay(count_mat, metric) 
+        sim_mat <- dismay(count_mat - min(count_mat) + eps, metric) 
     } else {
         sim_mat <- dismay(log_mat, metric) 
     }
