@@ -1,6 +1,7 @@
 source("dimes.R")
-library(GEOquery)
 library(Seurat)
+library(GEOquery)
+library(here)
 
 GSE114459.counts <- read.csv("load_scripts/cell_line/GSE114459/GSE114459_Polyak.csv")
 GSE114459.geo <- getGEO('GSE114459')
@@ -20,8 +21,10 @@ GSE114459.obj <- NormalizeData(GSE114459.obj)
 GSE114459.obj <- ScaleData(GSE114459.obj)
 
 GSE114459.obj <- FindVariableFeatures(GSE114459.obj) #necessary for ppi_comp
-gse114459.aucs <- ppi_comp(GSE114459.obj, colnames(GSE114459.obj))
-write.csv(gse114459.aucs,file="aucs/MCF7.csv")
+gse114459.aucs <- ppi_comp(GSE114459.obj, colnames(GSE114459.obj), run.PCA=T)
+write.csv(gse114459.aucs,here("results", "aucs", "pca", "MCF7_PCA.csv"))
+
+
 
 GSE131984.counts <- read.csv("load_scripts/cell_line/GSE131984/GSE131984_scRNA_counts.txt",
                              sep="\t")
@@ -42,5 +45,5 @@ GSE131984.pre.obj[["percent.mt"]] <- PercentageFeatureSet(GSE131984.pre.obj,
 GSE131984.pre.obj <- NormalizeData(GSE131984.pre.obj)
 GSE131984.pre.obj <- ScaleData(GSE131984.pre.obj)
 GSE131984.pre.obj <- FindVariableFeatures(GSE131984.pre.obj)
-GSE131984.aucs <- ppi_comp(GSE131984.pre.obj, colnames(GSE131984.pre.obj))
-write.csv(GSE131984.aucs, file="aucs/SUM159.csv")
+GSE131984.aucs <- ppi_comp(GSE131984.pre.obj, colnames(GSE131984.pre.obj), run.PCA=T)
+write.csv(GSE131984.aucs,here("results", "aucs", "pca", "SUM159_PCA.csv"))
