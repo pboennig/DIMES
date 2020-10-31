@@ -115,8 +115,10 @@ build_gene_graphs <- function(obj, cells, mapped, metrics, run.PCA, num.PCs) {
     counts <- counts[, cells]
     log_counts <- log_counts[, cells]
     if (run.PCA) {
-	counts <- prcomp(counts)$x[,1:num.PCs]
-	log_counts <- prcomp(log_counts)$x[,1:num.PCs]
+	counts.pca <- prcomp(counts)$x
+	log_counts.pca <- prcomp(counts)$x
+	counts <- counts.pca[,1:min(num.PCs, dim(counts.pca)[2])]
+	log_counts <- log_counts.pca[,1:min(num.PCs, dim(log_counts.pca)[2])]
     }
     print(dim(counts))
     count_mat <- t(counts) # dismay expects as transpose of Seurat default
